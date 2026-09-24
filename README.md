@@ -6,13 +6,20 @@ Per sensor: a status badge (classic detector + RF model, shown side by side rath
 
 ## Run
 
+Dev (Vite proxies `/api` and `/ws` to `http://localhost:8080` — see `vite.config.ts`):
+
 ```bash
 npm install
-npm run dev      # proxies /api and /ws to http://localhost:8080 -- see vite.config.ts
+npm run dev
 ```
+
+Production: this repo builds and deploys as its own image, independent of `valve-stiction-backend` — the two never build against each other. `Dockerfile` is a multi-stage build (`npm run build`, then `nginx:alpine` serving the static output); nginx reverse-proxies `/api` and `/ws` to `BACKEND_HOST` so the browser still sees one origin (no CORS to configure) while the two stay separately built/deployed:
 
 ```bash
-npm run build     # outputs dist/ -- what valve-stiction-backend serves in production
+docker build -t valve-stiction-frontend .
+docker run -p 8081:80 -e BACKEND_HOST=backend:8080 valve-stiction-frontend
 ```
 
-In production there's no dev proxy: `valve-stiction-backend` serves this build's static output and the API/WebSocket from the same origin.
+| Env var | Default |
+|---|---|
+| `BACKEND_HOST` | `backend:8080` |

@@ -1,0 +1,29 @@
+server {
+    listen 80;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # SPA fallback: any path that isn't a real static file goes to
+    # index.html so client-side routing (if this ever grows any) still
+    # works on a hard refresh.
+    location / {
+        try_files $uri /index.html;
+    }
+
+    # Same-origin from the browser's perspective (no CORS to configure)
+    # while still being two independently built/deployed images -- nginx
+    # reverse-proxies to whatever backend BACKEND_HOST points at.
+    location /api/ {
+        proxy_pass http://${BACKEND_HOST}/api/;
+        proxy_set_header Host $host;
+    }
+
+    location /ws {
+        proxy_pass http://${BACKEND_HOST}/ws;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+}
