@@ -1,26 +1,40 @@
 import { useEffect, useState } from 'react'
-import { fetchSensorWindows } from '../api'
 import type { SensorStatus, WindowSample } from '../types'
 import { PhasePlot } from './PhasePlot'
 import { StatusBadge } from './StatusBadge'
 import { TimeSeriesChart } from './TimeSeriesChart'
 import { ValveAnimation } from './ValveAnimation'
 
-export function SensorPanel({ status }: { status: SensorStatus }) {
+const MAX_WINDOWS = 10
+
+export function SensorPanel({
+  status,
+  latestWindow,
+}: {
+  status: SensorStatus
+  latestWindow?: WindowSample
+}) {
   const [windows, setWindows] = useState<WindowSample[]>([])
 
+  // WS-only: no REST call here. On sensor switch, seed history with
+  // whatever the hook already has for this sensor (from the WS snapshot
+  // or an earlier update) -- if nothing's arrived yet, the panel starts
+  // empty and fills in as pushes come, same as a fresh connection would.
   useEffect(() => {
-    let cancelled = false
-    fetchSensorWindows(status.sensor_id, 10)
-      .then((w) => {
-        if (!cancelled) setWindows(w)
-      })
-      .catch((err) => console.error('failed to fetch windows', err))
-    return () => {
-      cancelled = true
-    }
-    // Refetch whenever this sensor's latest window changes (new WS update).
-  }, [status.sensor_id, status.window_start])
+    setWindows(latestWindow ? [latestWindow] : [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reset on sensor switch, not on every latestWindow change
+  }, [status.sensor_id])
+
+  // Append each WS-pushed window as it arrives.
+  useEffect(() => {
+    if (!latestWindow) return
+    setWindows((prev) => {
+      if (prev.length > 0 && prev[prev.length - 1].window_start === latestWindow.window_start) {
+        return prev // already have it
+      }
+      return [...prev, latestWindow].slice(-MAX_WINDOWS)
+    })
+  }, [latestWindow])
 
   const pv = windows.flatMap((w) => w.pv)
   const op = windows.flatMap((w) => w.op)

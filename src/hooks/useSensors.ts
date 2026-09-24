@@ -1,22 +1,31 @@
-import { useEffect, useRef, useState } from 'react'
-import { fetchSensors, wsURL } from '../api'
-import type { SensorStatus, WSMessage } from '../types'
+import { useEffect, useState } from 'react'
+import { wsURL } from '../api'
+import type { SensorStatus, WindowSample, WSMessage } from '../types'
 
-// Loads the initial snapshot over REST (so the dashboard isn't empty while
-// the WebSocket connects), then keeps it current from the WS's
-// snapshot/update messages (see backend/ws.go).
-export function useSensors(): SensorStatus[] {
+interface UseSensorsResult {
+  sensors: SensorStatus[]
+  // Latest window per sensor (pv/op), from the WS snapshot/update --
+  // the only data source the dashboard has; there's no REST fallback.
+  latestWindows: Record<string, WindowSample>
+}
+
+function splitUpdate(sensor: SensorStatus & { pv?: number[]; op?: number[] }) {
+  const { pv, op, ...status } = sensor
+  const window: WindowSample | undefined =
+    pv && op ? { window_start: status.window_start, label: status.label, pv, op } : undefined
+  return { status, window }
+}
+
+// WS-only: the snapshot sent right after connecting and every subsequent
+// "update" message both carry full sensor status plus that sensor's
+// latest window (pv/op) -- see backend/delivery/ws/hub.go. No REST calls
+// anywhere in this hook; until the WS connects there's simply nothing to
+// show yet, which App.tsx renders as "waiting for sensors".
+export function useSensors(): UseSensorsResult {
   const [sensors, setSensors] = useState<Record<string, SensorStatus>>({})
-  const gotSnapshot = useRef(false)
+  const [latestWindows, setLatestWindows] = useState<Record<string, WindowSample>>({})
 
   useEffect(() => {
-    fetchSensors()
-      .then((list) => {
-        if (gotSnapshot.current) return // WS snapshot already arrived first
-        setSensors(Object.fromEntries(list.map((s) => [s.sensor_id, s])))
-      })
-      .catch((err) => console.error('failed to fetch initial sensors', err))
-
     let ws: WebSocket
     let reconnectTimer: ReturnType<typeof setTimeout>
 
@@ -25,10 +34,21 @@ export function useSensors(): SensorStatus[] {
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data) as WSMessage
         if (msg.type === 'snapshot') {
-          gotSnapshot.current = true
-          setSensors(Object.fromEntries(msg.sensors.map((s) => [s.sensor_id, s])))
+          const nextSensors: Record<string, SensorStatus> = {}
+          const nextWindows: Record<string, WindowSample> = {}
+          for (const sensor of msg.sensors) {
+            const { status, window } = splitUpdate(sensor)
+            nextSensors[status.sensor_id] = status
+            if (window) nextWindows[status.sensor_id] = window
+          }
+          setSensors(nextSensors)
+          setLatestWindows((prev) => ({ ...prev, ...nextWindows }))
         } else if (msg.type === 'update') {
-          setSensors((prev) => ({ ...prev, [msg.sensor.sensor_id]: msg.sensor }))
+          const { status, window } = splitUpdate(msg.sensor)
+          setSensors((prev) => ({ ...prev, [status.sensor_id]: status }))
+          if (window) {
+            setLatestWindows((prev) => ({ ...prev, [status.sensor_id]: window }))
+          }
         }
       }
       ws.onclose = () => {
@@ -43,5 +63,8 @@ export function useSensors(): SensorStatus[] {
     }
   }, [])
 
-  return Object.values(sensors).sort((a, b) => a.sensor_id.localeCompare(b.sensor_id))
+  return {
+    sensors: Object.values(sensors).sort((a, b) => a.sensor_id.localeCompare(b.sensor_id)),
+    latestWindows,
+  }
 }

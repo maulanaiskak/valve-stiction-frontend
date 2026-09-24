@@ -4,7 +4,7 @@ import { SensorPanel } from './components/SensorPanel'
 import { useSensors } from './hooks/useSensors'
 
 function App() {
-  const sensors = useSensors()
+  const { sensors, latestWindows } = useSensors()
   const [selected, setSelected] = useState<string | null>(null)
   const activeSensor = sensors.find((s) => s.sensor_id === selected) ?? sensors[0]
 
@@ -27,7 +27,11 @@ function App() {
         </nav>
       </header>
 
-      <main>{activeSensor && <SensorPanel status={activeSensor} />}</main>
+      <main>
+        {activeSensor && (
+          <SensorPanel status={activeSensor} latestWindow={latestWindows[activeSensor.sensor_id]} />
+        )}
+      </main>
     </div>
   )
 }

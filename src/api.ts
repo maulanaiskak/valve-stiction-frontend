@@ -1,17 +1,8 @@
-import type { SensorStatus, WindowSample } from './types'
-
-export async function fetchSensors(): Promise<SensorStatus[]> {
-  const res = await fetch('/api/sensors')
-  if (!res.ok) throw new Error(`GET /api/sensors: ${res.status}`)
-  return res.json()
-}
-
-export async function fetchSensorWindows(sensorId: string, limit = 50): Promise<WindowSample[]> {
-  const res = await fetch(`/api/sensors/${encodeURIComponent(sensorId)}/windows?limit=${limit}`)
-  if (!res.ok) throw new Error(`GET /api/sensors/${sensorId}/windows: ${res.status}`)
-  return res.json()
-}
-
+// The dashboard's only data source is the WebSocket (see hooks/useSensors.ts)
+// -- the snapshot on connect and every update carry full sensor status
+// plus pv/op, so there's no REST call to make here. This file just builds
+// the WS URL. (The backend's REST endpoints still exist and work; the
+// frontend just doesn't use them.)
 export function wsURL(): string {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   return `${proto}//${window.location.host}/ws`
