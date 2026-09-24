@@ -2,7 +2,24 @@ import type { SensorStatus, WindowSample } from '../types'
 import { PhasePlot } from './PhasePlot'
 import { StatusBadge } from './StatusBadge'
 import { TimeSeriesChart } from './TimeSeriesChart'
-import { ValveAnimation } from './ValveAnimation'
+import { ValveAnimation, type ValveState } from './ValveAnimation'
+
+// Combines both detectors into one animation state -- driving the
+// animation off status.label alone (classic only) silently resolved
+// disagreement with RF, which is exactly what the rest of this dashboard
+// deliberately never does (both labels are always shown side by side).
+// "sticking"/"healthy" only when classic and RF actually agree;
+// otherwise "uncertain", whether that's classic itself being unsure or
+// the two detectors pointing different ways.
+function combinedValveState(status: SensorStatus): ValveState {
+  if (status.label === 'uncertain' || status.rf_label === null) {
+    return status.label === 'yes' ? 'sticking' : status.label === 'no' ? 'healthy' : 'uncertain'
+  }
+  if (status.label === status.rf_label) {
+    return status.label === 'yes' ? 'sticking' : 'healthy'
+  }
+  return 'uncertain' // classic and RF disagree
+}
 
 // Moving time window, not an accumulating history: each push replaces the
 // displayed window with the next one (same fixed size, WindowSize
@@ -32,7 +49,7 @@ export function SensorPanel({
       <div className="sensor-panel-grid">
         <div>
           <h3>Valve</h3>
-          <ValveAnimation sticking={status.label === 'yes'} />
+          <ValveAnimation state={combinedValveState(status)} />
           <dl className="metrics">
             <dt>Ellipse index</dt>
             <dd>{status.ellipse_index.toFixed(3)}</dd>

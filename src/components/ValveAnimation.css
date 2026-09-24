@@ -25,6 +25,15 @@
   animation: travel-stuck 4s infinite alternate;
 }
 
+/* Uncertain: classic and RF disagree (or classic itself is unsure) --
+   a hesitant back-and-forth twitch around one position, distinct from
+   both the smooth healthy travel and the sticking hold-then-snap, so
+   disagreement reads as its own state rather than silently defaulting
+   to "healthy" or "sticking". */
+.stem-uncertain {
+  animation: travel-hesitant 2.4s ease-in-out infinite;
+}
+
 @keyframes travel-smooth {
   from {
     transform: translateY(0);
@@ -45,14 +54,32 @@
   }
 }
 
-/* Only visible while sticking (CSS var flipped via the badge's own
-   animation only applying in that class) -- a small pulsing dot at the
-   stem, drawing the eye to where the valve is "trying" to move. */
+@keyframes travel-hesitant {
+  0%,
+  100% {
+    transform: translateY(-10px);
+  }
+  25% {
+    transform: translateY(-16px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  75% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Pulsing dot at the stem: red while stuck (drawing the eye to where the
+   valve is "trying" to move), amber while uncertain, hidden otherwise. */
 .stem-healthy .stuck-badge {
   display: none;
 }
 .stem-sticking .stuck-badge {
   animation: stuck-pulse 4s infinite;
+}
+.stem-uncertain .stuck-badge {
+  animation: uncertain-pulse 2.4s ease-in-out infinite;
 }
 
 @keyframes stuck-pulse {
@@ -80,14 +107,29 @@
   }
 }
 
-/* Flow chevrons: steady scroll when healthy, visibly stall during the
-   sticking hold phases (same timing as travel-stuck) instead of
-   animating independently of the stem. */
+@keyframes uncertain-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    r: 4;
+  }
+  50% {
+    opacity: 0.85;
+    r: 6;
+  }
+}
+
+/* Flow chevrons: steady scroll when healthy, stall during a sticking
+   hold (same timing as travel-stuck), flicker irregularly when
+   uncertain -- distinct from both. */
 .flow-healthy {
   animation: flow-scroll 1.2s linear infinite;
 }
 .flow-sticking {
   animation: flow-stall 4s infinite alternate;
+}
+.flow-uncertain {
+  animation: flow-flicker 2.4s ease-in-out infinite;
 }
 
 @keyframes flow-scroll {
@@ -112,6 +154,16 @@
   }
 }
 
+@keyframes flow-flicker {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
 .valve-caption {
   font-size: 11px;
   letter-spacing: 0.02em;
@@ -121,4 +173,7 @@
 }
 .caption-sticking {
   color: #dc2626;
+}
+.caption-uncertain {
+  color: #d97706;
 }
