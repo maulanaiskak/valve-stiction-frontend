@@ -1,32 +1,18 @@
-# React + TypeScript + Vite
+# valve-stiction-frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Dashboard for the valve stiction fault-detection pipeline. React + TypeScript (Vite). Talks to [valve-stiction-backend](https://github.com/maulanaiskak/valve-stiction-backend)'s REST API and WebSocket for live data — no other backend integration.
 
-Currently, two official plugins are available:
+Per sensor: a status badge (classic detector + RF model, shown side by side rather than picked between), an animated valve (smooth travel when healthy, stepped/jerky when sticking — the same flat-then-jump shape the detectors score for), a PV-vs-OP phase plot, and PV/OP-over-time charts.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Run
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev      # proxies /api and /ws to http://localhost:8080 -- see vite.config.ts
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+```bash
+npm run build     # outputs dist/ -- what valve-stiction-backend serves in production
+```
+
+In production there's no dev proxy: `valve-stiction-backend` serves this build's static output and the API/WebSocket from the same origin.
